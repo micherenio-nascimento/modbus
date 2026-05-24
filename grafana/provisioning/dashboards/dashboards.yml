@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: DSE 855
+    orgId: 1
+    folder: DSE 855
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

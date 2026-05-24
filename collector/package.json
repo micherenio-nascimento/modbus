@@ -1,0 +1,13 @@
+{
+  "name": "dse855-collector",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node collector.js"
+  },
+  "dependencies": {
+    "mysql2": "3.11.5",
+    "prom-client": "15.1.3"
+  }
+}
