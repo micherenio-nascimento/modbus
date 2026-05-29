@@ -5,7 +5,7 @@ function App() {
     <main className="dashboard-shell">
       <iframe
         className="dashboard-frame"
-        src="http://localhost:3001/d/dse855-scada/dse-855-scada?orgId=1&from=now-15m&to=now&timezone=browser&refresh=10s&kiosk"
+        src="http://18.191.242.141:3001/d/dse855-scada/dse-855-scada?orgId=1&from=now-5m&to=now&timezone=browser&refresh=5s&kiosk"
         title="Grafana Dashboard"
       />
     </main>
