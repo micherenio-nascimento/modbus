@@ -50,7 +50,7 @@
                 "value": null
               },
               {
-                "color": "green",
+                "color": "blue",
                 "value": 1
               }
             ]
@@ -113,7 +113,7 @@
                 "value": null
               },
               {
-                "color": "green",
+                "color": "blue",
                 "value": 1
               }
             ]
@@ -168,7 +168,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "blue",
                 "value": null
               }
             ]
@@ -227,7 +227,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "blue",
                 "value": null
               }
             ]
@@ -286,7 +286,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "blue",
                 "value": null
               },
               {
@@ -456,7 +456,7 @@
                 "value": null
               },
               {
-                "color": "green",
+                "color": "blue",
                 "value": 1
               }
             ]
@@ -520,7 +520,7 @@
                 "value": null
               },
               {
-                "color": "green",
+                "color": "blue",
                 "value": 1
               }
             ]
@@ -584,7 +584,7 @@
                 "value": null
               },
               {
-                "color": "green",
+                "color": "blue",
                 "value": 1
               }
             ]
@@ -648,7 +648,7 @@
                 "value": null
               },
               {
-                "color": "green",
+                "color": "blue",
                 "value": 1
               }
             ]
@@ -712,7 +712,7 @@
                 "value": null
               },
               {
-                "color": "green",
+                "color": "blue",
                 "value": 1
               }
             ]
@@ -776,7 +776,7 @@
                 "value": null
               },
               {
-                "color": "green",
+                "color": "blue",
                 "value": 1
               }
             ]
@@ -840,7 +840,7 @@
                 "value": null
               },
               {
-                "color": "green",
+                "color": "blue",
                 "value": 58
               },
               {
@@ -931,7 +931,7 @@
                 "value": null
               },
               {
-                "color": "green",
+                "color": "blue",
                 "value": 1
               }
             ]
@@ -994,7 +994,7 @@
                 "value": null
               },
               {
-                "color": "green",
+                "color": "blue",
                 "value": 1
               }
             ]
@@ -1057,7 +1057,7 @@
                 "value": null
               },
               {
-                "color": "green",
+                "color": "blue",
                 "value": 1
               }
             ]
@@ -1174,7 +1174,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "blue",
                 "value": null
               }
             ]
@@ -1343,7 +1343,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "blue"
               }
             ]
           },
@@ -1448,7 +1448,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "blue"
               }
             ]
           },

@@ -9,6 +9,13 @@ datasources:
     isDefault: true
     editable: true
 
+  - name: DSE Control
+    uid: DSEControl
+    type: prometheus
+    access: proxy
+    url: http://collector:9108
+    editable: true
+
   - name: MySQL
     uid: MySQL
     type: mysql
