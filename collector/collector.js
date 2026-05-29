@@ -9,6 +9,7 @@ const config = {
   baseUrl: (process.env.DSE_BASE_URL ?? "http://187.51.141.58:8001").replace(/\/$/, ""),
   username: process.env.DSE_USER ?? "admin",
   password: process.env.DSE_PASSWORD ?? "",
+  controlToken: process.env.CONTROL_TOKEN ?? "",
   collectIntervalMs: envInt("COLLECT_INTERVAL_SECONDS", 1) * 1000,
   mysqlSaveIntervalMs: envInt("MYSQL_SAVE_INTERVAL_SECONDS", 300) * 1000,
   sessionRefreshMs: envInt("SESSION_REFRESH_SECONDS", 0) * 1000,
@@ -20,6 +21,18 @@ const config = {
     user: process.env.MYSQL_USER ?? "dse",
     password: process.env.MYSQL_PASSWORD ?? "dse_password"
   }
+};
+
+const DSE_COMMANDS = {
+  stop: 35700,
+  auto: 35701
+};
+
+const PROMETHEUS_CONTROL_QUERIES = {
+  dse_control_stop: "stop",
+  stop: "stop",
+  dse_control_auto: "auto",
+  auto: "auto"
 };
 
 function envInt(name, fallback) {
@@ -90,6 +103,40 @@ class DseClient {
     return data;
   }
 
+  async command(name) {
+    if (this.sid === null || this.mustRefreshSession()) {
+      await this.login();
+    }
+
+    const intButton = DSE_COMMANDS[name];
+    if (intButton === undefined) {
+      throw new Error(`Comando DSE desconhecido: ${name}`);
+    }
+
+    let data = await getAny(`${config.baseUrl}/save.cgi`, {
+      SID: this.sid,
+      action: 1,
+      intButton
+    });
+
+    if (this.sidInvalidPayload(data)) {
+      console.warn("SID aparentemente expirado durante comando; refazendo login");
+      await this.login();
+      data = await getAny(`${config.baseUrl}/save.cgi`, {
+        SID: this.sid,
+        action: 1,
+        intButton
+      });
+    }
+
+    return {
+      command: name,
+      intButton,
+      sid: this.sid,
+      response: data
+    };
+  }
+
   mustRefreshSession() {
     return config.sessionRefreshMs > 0 && Date.now() - this.loginAt >= config.sessionRefreshMs;
   }
@@ -101,6 +148,24 @@ class DseClient {
 }
 
 async function getJson(url, params) {
+  const { body } = await getBody(url, params);
+  return JSON.parse(body);
+}
+
+async function getAny(url, params) {
+  const { body, contentType } = await getBody(url, params);
+  if (contentType.includes("application/json")) {
+    return JSON.parse(body);
+  }
+
+  try {
+    return JSON.parse(body);
+  } catch {
+    return body;
+  }
+}
+
+async function getBody(url, params) {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     search.set(key, String(value));
@@ -116,7 +181,10 @@ async function getJson(url, params) {
     throw error;
   }
 
-  return response.json();
+  return {
+    body: await response.text(),
+    contentType: response.headers.get("content-type") ?? ""
+  };
 }
 
 const register = new client.Registry();
@@ -139,7 +207,9 @@ const gauges = {
   moduleLink: gauge("dse_module_link", "Module link status"),
   alarmLevel: gauge("dse_alarm_level", "Alarm level"),
   collectSuccess: gauge("dse_collect_success", "Last collect success, 1 or 0"),
-  lastCollectTimestamp: gauge("dse_last_collect_timestamp_seconds", "Last successful collect timestamp")
+  lastCollectTimestamp: gauge("dse_last_collect_timestamp_seconds", "Last successful collect timestamp"),
+  controlSuccess: gauge("dse_control_success", "Last control command success, 1 or 0"),
+  lastControlTimestamp: gauge("dse_last_control_timestamp_seconds", "Last successful control command timestamp")
 };
 
 const moduleInfo = new client.Gauge({
@@ -246,23 +316,236 @@ class MysqlWriter {
   }
 }
 
-function startMetricsServer() {
+function startMetricsServer(dse) {
   const server = http.createServer(async (request, response) => {
-    if (request.url !== "/metrics") {
-      response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
-      response.end("not found\n");
+    const url = new URL(request.url ?? "/", "http://localhost");
+
+    if (request.method === "OPTIONS") {
+      writeCors(response, 204);
+      response.end();
       return;
     }
 
-    response.writeHead(200, { "content-type": register.contentType });
-    response.end(await register.metrics());
+    if (url.pathname === "/metrics") {
+      response.writeHead(200, { "content-type": register.contentType });
+      response.end(await register.metrics());
+      return;
+    }
+
+    if (url.pathname === "/api/v1/status/buildinfo") {
+      writeJson(response, 200, {
+        status: "success",
+        data: {
+          version: "dse855-control",
+          revision: "local",
+          branch: "main",
+          buildUser: "collector",
+          buildDate: new Date().toISOString(),
+          goVersion: "node"
+        }
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/labels") {
+      writeJson(response, 200, {
+        status: "success",
+        data: ["__name__", "command", "intButton"]
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/label/__name__/values") {
+      writeJson(response, 200, {
+        status: "success",
+        data: ["dse_control_stop", "dse_control_auto", "dse_control_command"]
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/series") {
+      writeJson(response, 200, {
+        status: "success",
+        data: []
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/metadata") {
+      writeJson(response, 200, {
+        status: "success",
+        data: {}
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/query") {
+      await handlePrometheusControlQuery(request, response, url, dse);
+      return;
+    }
+
+    if (url.pathname === "/api/v1/query_range") {
+      writeJson(response, 200, {
+        status: "success",
+        data: {
+          resultType: "matrix",
+          result: []
+        }
+      });
+      return;
+    }
+
+    if (url.pathname === "/control/stop" || url.pathname === "/api/dse/stop") {
+      await handleControlRequest(request, response, url, dse, "stop");
+      return;
+    }
+
+    if (url.pathname === "/control/auto" || url.pathname === "/api/dse/auto") {
+      await handleControlRequest(request, response, url, dse, "auto");
+      return;
+    }
+
+    writeText(response, 404, "not found\n");
   });
 
   server.listen(config.metricsPort, "0.0.0.0", () => {
     console.log(`Metricas em :${config.metricsPort}/metrics`);
+    console.log(`Controle DSE em :${config.metricsPort}/control/{stop,auto}`);
   });
 
   return server;
+}
+
+async function handlePrometheusControlQuery(request, response, url, dse) {
+  if (request.method !== "GET" && request.method !== "POST") {
+    writePrometheusError(response, 405, "bad_data", "method not allowed");
+    return;
+  }
+
+  let query = url.searchParams.get("query") ?? "";
+  if (request.method === "POST") {
+    const body = await readRequestBody(request);
+    const params = new URLSearchParams(body);
+    query = params.get("query") ?? query;
+  }
+
+  const command = PROMETHEUS_CONTROL_QUERIES[query.trim()];
+  if (!command) {
+    writeJson(response, 200, {
+      status: "success",
+      data: {
+        resultType: "vector",
+        result: []
+      }
+    });
+    return;
+  }
+
+  if (!isAuthorized(request, url)) {
+    writePrometheusError(response, 401, "unauthorized", "unauthorized");
+    return;
+  }
+
+  try {
+    const result = await dse.command(command);
+    gauges.controlSuccess.set(1);
+    gauges.lastControlTimestamp.set(Date.now() / 1000);
+    writeJson(response, 200, prometheusVectorResult(command, result.intButton, 1));
+  } catch (error) {
+    gauges.controlSuccess.set(0);
+    console.error(`Falha ao executar comando ${command}`, error);
+    writePrometheusError(response, 502, "execution", error instanceof Error ? error.message : String(error));
+  }
+}
+
+async function handleControlRequest(request, response, url, dse, command) {
+  if (request.method !== "GET" && request.method !== "POST") {
+    writeJson(response, 405, { ok: false, error: "method_not_allowed" });
+    return;
+  }
+
+  if (!isAuthorized(request, url)) {
+    writeJson(response, 401, { ok: false, error: "unauthorized" });
+    return;
+  }
+
+  try {
+    const result = await dse.command(command);
+    gauges.controlSuccess.set(1);
+    gauges.lastControlTimestamp.set(Date.now() / 1000);
+    writeJson(response, 200, { ok: true, ...result });
+  } catch (error) {
+    gauges.controlSuccess.set(0);
+    console.error(`Falha ao executar comando ${command}`, error);
+    writeJson(response, 502, {
+      ok: false,
+      command,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
+function prometheusVectorResult(command, intButton, value) {
+  return {
+    status: "success",
+    data: {
+      resultType: "vector",
+      result: [
+        {
+          metric: {
+            __name__: "dse_control_command",
+            command,
+            intButton: String(intButton)
+          },
+          value: [Date.now() / 1000, String(value)]
+        }
+      ]
+    }
+  };
+}
+
+function writePrometheusError(response, statusCode, errorType, error) {
+  writeJson(response, statusCode, {
+    status: "error",
+    errorType,
+    error
+  });
+}
+
+function isAuthorized(request, url) {
+  if (!config.controlToken) return true;
+  return request.headers["x-control-token"] === config.controlToken || url.searchParams.get("token") === config.controlToken;
+}
+
+function readRequestBody(request) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    request.setEncoding("utf8");
+    request.on("data", (chunk) => {
+      body += chunk;
+    });
+    request.on("end", () => resolve(body));
+    request.on("error", reject);
+  });
+}
+
+function writeCors(response, statusCode, headers = {}) {
+  response.writeHead(statusCode, {
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-headers": "content-type,x-control-token",
+    ...headers
+  });
+}
+
+function writeJson(response, statusCode, payload) {
+  writeCors(response, statusCode, { "content-type": "application/json; charset=utf-8" });
+  response.end(`${JSON.stringify(payload)}\n`);
+}
+
+function writeText(response, statusCode, text) {
+  writeCors(response, statusCode, { "content-type": "text/plain; charset=utf-8" });
+  response.end(text);
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -270,7 +553,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function main() {
   const dse = new DseClient();
   const writer = new MysqlWriter();
-  const server = startMetricsServer();
+  const server = startMetricsServer(dse);
   let lastSave = 0;
   let stopping = false;
 

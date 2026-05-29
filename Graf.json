@@ -356,8 +356,8 @@
       "options": {
         "buttons": [
           {
-            "datasource": "",
-            "query": "",
+            "datasource": "DSE Control",
+            "query": "{\"expr\":\"dse_control_stop\",\"instant\":true,\"range\":false}",
             "text": "STOP",
             "variant": "destructive"
           }
@@ -393,45 +393,8 @@
       "options": {
         "buttons": [
           {
-            "datasource": "",
-            "query": "",
-            "text": "START",
-            "variant": "primary"
-          }
-        ],
-        "orientation": "horizontal"
-      },
-      "pluginVersion": "0.3.2",
-      "targets": [
-        {
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "transparent": true,
-      "type": "speakyourcode-button-panel"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 3,
-        "x": 21,
-        "y": 0
-      },
-      "id": 13,
-      "options": {
-        "buttons": [
-          {
-            "datasource": "",
-            "query": "",
+            "datasource": "DSE Control",
+            "query": "{\"expr\":\"dse_control_auto\",\"instant\":true,\"range\":false}",
             "text": "AUTO MODE",
             "variant": "secondary"
           }
@@ -1380,8 +1343,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -1486,8 +1448,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -1541,27 +1502,14 @@
     }
   ],
   "preload": false,
-  "refresh": "5s",
+  "refresh": "5m",
   "schemaVersion": 40,
   "tags": [
     "dse855",
     "modbus"
   ],
   "templating": {
-    "list": [
-      {
-        "current": {
-          "text": "",
-          "value": ""
-        },
-        "name": "query0",
-        "options": [],
-        "query": "",
-        "refresh": 1,
-        "regex": "",
-        "type": "query"
-      }
-    ]
+    "list": []
   },
   "time": {
     "from": "now-5m",
@@ -1571,6 +1519,6 @@
   "timezone": "browser",
   "title": "DSE 855 - SCADA",
   "uid": "dse855-scada",
-  "version": 44,
+  "version": 20,
   "weekStart": ""
 }
