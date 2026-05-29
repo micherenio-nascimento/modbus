@@ -117,15 +117,15 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      # GF_EXPLORE_ENABLED: "false"
-      # GF_ALERTING_ENABLED: "false"
-      # GF_UNIFIED_ALERTING_ENABLED: "false"
-      # GF_SECURITY_ALLOW_EMBEDDING: "true"
-      # GF_AUTH_DISABLE_LOGIN_FORM: "true"
-      # GF_USERS_VIEWERS_CAN_EDIT: "false"
-      # GF_AUTH_ANONYMOUS_ENABLED: "true"
-      # GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
-      # GF_SECURITY_COOKIE_SAMESITE: "none"
+      GF_EXPLORE_ENABLED: "false"
+      GF_ALERTING_ENABLED: "false"
+      GF_UNIFIED_ALERTING_ENABLED: "false"
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_USERS_VIEWERS_CAN_EDIT: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
+      GF_SECURITY_COOKIE_SAMESITE: "none"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
