@@ -3,18 +3,32 @@ import './App.css'
 import alytechLogo from './assets/alytech-logo.svg'
 
 const TOKEN_KEY = 'dse855.auth.token'
-const DASHBOARD_URL = 'http://localhost:3001/d/dse855-scada/dse-855-scada?orgId=1&from=now-5m&to=now&timezone=browser&refresh=5s&kiosk'
+const DASHBOARD_URL = '/d/dse855-scada/dse-855-scada?orgId=1&from=now-5m&to=now&timezone=browser&refresh=5s&kiosk'
 const emptyUserForm = { name: '', email: '', password: '' }
 
 async function apiRequest(path, options = {}) {
   const response = await fetch(path, {
     ...options,
     headers: {
+      Accept: 'application/json',
       'Content-Type': 'application/json',
       ...options.headers,
     },
   })
-  const payload = await response.json()
+  const responseText = await response.text()
+  const contentType = response.headers.get('content-type') || ''
+  const isJson = contentType.includes('application/json')
+  let payload = {}
+
+  if (responseText && isJson) {
+    try {
+      payload = JSON.parse(responseText)
+    } catch {
+      throw new Error('A API retornou JSON invalido. Verifique os logs do backend.')
+    }
+  } else if (responseText) {
+    throw new Error('A API retornou uma resposta invalida. Verifique o proxy /auth no servidor.')
+  }
 
   if (!response.ok) {
     throw new Error(payload.error || 'Nao foi possivel concluir a operacao.')
