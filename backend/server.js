@@ -23,6 +23,9 @@ const pool = mysql.createPool({
   namedPlaceholders: true
 });
 
+let databaseReady = false;
+let databaseError = "Banco de dados ainda nao inicializado.";
+
 function envInt(name, fallback) {
   const value = process.env[name];
   if (value === undefined || value === "") return fallback;
@@ -42,6 +45,32 @@ async function ensureSchema() {
       UNIQUE KEY uq_app_users_email (email)
     )
   `);
+}
+
+async function waitForDatabase() {
+  let attempt = 1;
+
+  while (true) {
+    try {
+      await ensureSchema();
+      databaseReady = true;
+      databaseError = "";
+      console.log("Banco de autenticacao pronto.");
+      return;
+    } catch (error) {
+      databaseReady = false;
+      databaseError = error?.message || "Falha ao conectar no banco.";
+      console.error(`Banco indisponivel para autenticacao. Tentativa ${attempt}: ${databaseError}`);
+      attempt += 1;
+      await sleep(5000);
+    }
+  }
+}
+
+function sleep(milliseconds) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
 }
 
 function normalizeEmail(email) {
@@ -358,7 +387,16 @@ const server = http.createServer(async (request, response) => {
 
   try {
     if (request.method === "GET" && url.pathname === "/health") {
-      writeJson(response, 200, { ok: true });
+      writeJson(response, databaseReady ? 200 : 503, {
+        ok: databaseReady,
+        databaseReady,
+        error: databaseReady ? undefined : databaseError
+      });
+      return;
+    }
+
+    if (!databaseReady) {
+      writeJson(response, 503, { ok: false, error: "Banco de autenticacao indisponivel. Tente novamente em instantes." });
       return;
     }
 
@@ -400,11 +438,11 @@ const server = http.createServer(async (request, response) => {
   }
 });
 
-await ensureSchema();
-
 server.listen(config.port, "0.0.0.0", () => {
   console.log(`Auth backend em :${config.port}`);
 });
+
+void waitForDatabase();
 
 const stop = async () => {
   server.close();
